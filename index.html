@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Chat Telegram</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom scrollbar untuk area chat */
+        .chat-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 20px;
+        }
+        
+        /* Pesan Animasi Masuk */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .msg-enter {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 h-screen flex justify-center items-center font-sans transition-colors duration-300">
+
+    <!-- Container Chat (User) -->
+    <div id="chat-view" class="w-full max-w-md bg-white dark:bg-slate-800 h-full sm:h-[600px] sm:rounded-2xl sm:shadow-2xl flex flex-col relative overflow-hidden transition-colors duration-300">
+        
+        <!-- Header -->
+        <header class="bg-blue-500 dark:bg-slate-900 text-white p-4 flex justify-between items-center sm:rounded-t-2xl shadow-md z-10 transition-colors duration-300">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <i data-lucide="headphones" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight" id="header-title">Customer Service</h1>
+                    <div class="flex items-center gap-1.5 mt-0.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse"></span>
+                        <p class="text-[11px] text-blue-100 dark:text-slate-300 hover:text-white cursor-pointer transition-colors flex items-center gap-1" onclick="changeUsername()" title="Klik untuk ubah nama">
+                            <span id="header-status">Online</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <button onclick="toggleTheme()" class="p-2 hover:bg-white/20 rounded-full transition-colors" title="Ubah Tema">
+                <i data-lucide="moon" id="theme-icon" class="w-5 h-5"></i>
+            </button>
+        </header>
+
+        <!-- Area Pesan -->
+        <main id="chat-container" class="flex-1 overflow-y-auto p-4 flex flex-col gap-3 chat-scroll bg-[#e5ddd5] dark:bg-[#0b141a] relative transition-colors duration-300">
+            <!-- Background pattern opsional -->
+            <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: url('https://www.transparenttextures.com/patterns/cubes.png');"></div>
+            
+            <div class="text-center my-4 z-10">
+                <span class="bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full shadow-sm">
+                    Silakan atur Token Bot & Chat ID di pengaturan
+                </span>
+            </div>
+        </main>
+
+        <!-- Area Input -->
+        <footer class="bg-slate-50 dark:bg-slate-800 p-3 border-t dark:border-slate-700 flex items-end gap-2 z-10 sm:rounded-b-2xl transition-colors duration-300">
+            <input type="file" id="file-input" class="hidden" accept="image/*" onchange="sendImage(event)">
+            <label for="file-input" class="p-2 text-slate-500 dark:text-slate-400 hover:text-blue-500 cursor-pointer transition-colors shrink-0">
+                <i data-lucide="paperclip" class="w-5 h-5"></i>
+            </label>
+            <div class="flex-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl overflow-hidden shadow-sm flex items-center pr-1 focus-within:ring-2 ring-blue-500/50 transition-all">
+                <textarea id="message-input" rows="1" class="w-full py-2.5 px-4 outline-none resize-none bg-transparent max-h-32 text-slate-700 dark:text-slate-200" placeholder="Ketik pesan..." oninput="autoResize(this)" onkeydown="handleEnter(event)" disabled></textarea>
+            </div>
+            <button id="send-btn" onclick="sendMessage()" class="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed shrink-0" disabled>
+                <i data-lucide="send" class="w-5 h-5 ml-0.5"></i>
+            </button>
+        </footer>
+    </div>
+
+    <!-- Halaman Admin View -->
+    <div id="admin-view" class="w-full max-w-md bg-slate-800 h-full sm:h-[600px] sm:rounded-2xl sm:shadow-2xl flex flex-col relative overflow-hidden hidden">
+        <header class="bg-slate-900 text-white p-4 flex justify-between items-center sm:rounded-t-2xl shadow-md z-10">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                    <i data-lucide="shield" class="w-6 h-6 text-emerald-400"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">Admin Panel</h1>
+                    <p class="text-xs text-slate-400">Konfigurasi Sistem</p>
+                </div>
+            </div>
+            <button onclick="window.location.href=window.location.pathname" class="p-2 hover:bg-white/10 rounded-full transition-colors" title="Kembali ke Chat">
+                <i data-lucide="message-square" class="w-5 h-5"></i>
+            </button>
+        </header>
+
+        <main class="flex-1 overflow-y-auto p-6 flex flex-col gap-5 bg-slate-800 text-slate-200">
+            <div class="bg-slate-700/50 p-4 rounded-xl border border-slate-600 text-sm">
+                <p class="font-semibold text-emerald-400 mb-2">Petunjuk:</p>
+                <ul class="list-disc pl-4 space-y-1 text-slate-300">
+                    <li>Halaman ini hanya muncul jika ada <code>?admin</code> di URL.</li>
+                    <li>Token didapat dari <b>@BotFather</b>.</li>
+                    <li>Chat ID didapat dari <b>@userinfobot</b>.</li>
+                </ul>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-400 mb-1">Token Bot</label>
+                <input type="password" id="admin-input-token" class="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-white placeholder-slate-500" placeholder="123456:ABC-DEF1234...">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-400 mb-1">Chat ID Target</label>
+                <input type="text" id="admin-input-chat-id" class="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-white placeholder-slate-500" placeholder="Misal: -5112472436">
+            </div>
+
+            <button onclick="saveAdminSettings()" class="w-full bg-emerald-500 text-white py-3.5 rounded-xl font-bold hover:bg-emerald-600 transition-colors shadow-lg mt-4">
+                Simpan Konfigurasi
+            </button>
+        </main>
+    </div>
+    
+    <!-- Toast Notifikasi -->
+    <div id="toast" class="absolute top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-full shadow-lg text-sm font-medium transition-all duration-300 opacity-0 pointer-events-none z-50">
+            Pesan notifikasi
+    </div>
+
+    <script>
+        // Inisialisasi ikon Lucide
+        lucide.createIcons();
+
+        // State Aplikasi & Sesi
+        let botToken = localStorage.getItem('tg_bot_token') || '7949300775:AAFXoBZb9yQgEQPe65BJ8TeX81Q34sFz4gQ';
+        let chatId = localStorage.getItem('tg_chat_id') || '-5112472436';
+        let lastUpdateId = 0;
+        let pollInterval = null;
+        let chatHistory = JSON.parse(localStorage.getItem('tg_chat_history')) || [];
+        const notifSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+
+        // Identitas User
+        let sessionId = localStorage.getItem('tg_session_id');
+        if (!sessionId) {
+            sessionId = Math.random().toString(36).substring(2, 8).toUpperCase();
+            localStorage.setItem('tg_session_id', sessionId);
+        }
+        
+        if (!localStorage.getItem('tg_username')) {
+            localStorage.setItem('tg_username', 'Guest-' + Math.floor(Math.random() * 1000));
+        }
+
+        // Tema Gelap Setup
+        if (localStorage.getItem('tg_theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const isAdminMode = urlParams.has('admin');
+
+        const chatContainer = document.getElementById('chat-container');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const statusText = document.getElementById('header-status');
+
+        // Saat aplikasi dimuat
+        window.onload = () => {
+            updateThemeIcon();
+            updateStatusText();
+            
+            if (isAdminMode) {
+                // Keamanan panel admin
+                const pwd = prompt("Masukkan password admin (Ketik: admin123)");
+                if (pwd !== "admin123") {
+                    window.location.href = window.location.pathname;
+                    return;
+                }
+
+                // Tampilkan halaman admin, sembunyikan chat
+                document.getElementById('chat-view').classList.add('hidden');
+                document.getElementById('chat-view').classList.remove('flex');
+                
+                const adminView = document.getElementById('admin-view');
+                adminView.classList.remove('hidden');
+                adminView.classList.add('flex');
+                
+                // Isi input dengan data yang ada
+                document.getElementById('admin-input-token').value = botToken;
+                document.getElementById('admin-input-chat-id').value = chatId;
+            } else {
+                // Tampilkan chat biasa
+                if (botToken && chatId) {
+                    startConnection();
+                } else {
+                    statusText.textContent = "Sistem belum dikonfigurasi.";
+                    chatContainer.innerHTML = `<div class="text-center my-4 z-10"><span class="bg-red-100 text-red-800 text-xs px-3 py-1 rounded-full shadow-sm">Tambahkan ?admin di URL untuk konfigurasi sistem</span></div>`;
+                }
+            }
+        };
+
+        // UI Helpers
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.opacity = '1';
+            toast.style.transform = 'translate(-50%, 10px)';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, 0)';
+            }, 3000);
+        }
+
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            const isDark = document.documentElement.classList.contains('dark');
+            localStorage.setItem('tg_theme', isDark ? 'dark' : 'light');
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const icon = document.getElementById('theme-icon');
+            if (icon) {
+                if (document.documentElement.classList.contains('dark')) {
+                    icon.setAttribute('data-lucide', 'sun');
+                } else {
+                    icon.setAttribute('data-lucide', 'moon');
+                }
+                lucide.createIcons();
+            }
+        }
+
+        function changeUsername() {
+            const currentName = localStorage.getItem('tg_username');
+            const newName = prompt("Ubah Nama Anda:", currentName);
+            if (newName && newName.trim() !== "") {
+                localStorage.setItem('tg_username', newName.trim());
+                updateStatusText();
+                showToast("Nama berhasil diperbarui!");
+            }
+        }
+
+        function updateStatusText() {
+            const userName = localStorage.getItem('tg_username');
+            statusText.innerHTML = `Online • <b>${userName}</b> <i data-lucide="edit-3" class="w-3 h-3 inline"></i>`;
+            lucide.createIcons();
+        }
+
+        function saveAdminSettings() {
+            const tokenVal = document.getElementById('admin-input-token').value.trim();
+            const idVal = document.getElementById('admin-input-chat-id').value.trim();
+            
+            if(!tokenVal || !idVal) {
+                showToast("Token dan Chat ID harus diisi!");
+                return;
+            }
+
+            botToken = tokenVal;
+            chatId = idVal;
+            localStorage.setItem('tg_bot_token', botToken);
+            localStorage.setItem('tg_chat_id', chatId);
+            
+            showToast("Pengaturan disimpan! Mengalihkan...");
+            
+            setTimeout(() => {
+                window.location.href = window.location.pathname; // Kembali ke tampilan chat biasa
+            }, 1000);
+        }
+
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+            
+            // Validasi input untuk tombol send
+            if(textarea.value.trim().length > 0) {
+                sendBtn.removeAttribute('disabled');
+            } else {
+                sendBtn.setAttribute('disabled', 'true');
+            }
+        }
+
+        function handleEnter(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if(messageInput.value.trim().length > 0) {
+                    sendMessage();
+                }
+            }
+        }
+
+        function scrollToBottom() {
+            chatContainer.scrollTo({
+                top: chatContainer.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        function loadHistory() {
+            chatHistory.forEach(msg => {
+                renderMessage(msg.text, msg.type, new Date(msg.time), msg.senderName, msg.imageUrl);
+            });
+        }
+
+        function appendMessage(text, type, time = new Date(), senderName = 'Admin', imageUrl = null, save = true) {
+            renderMessage(text, type, time, senderName, imageUrl);
+            
+            if (save) {
+                chatHistory.push({ text, type, time: time.toISOString(), senderName, imageUrl });
+                // Simpan max 50 pesan agar tidak memberatkan browser
+                if (chatHistory.length > 50) chatHistory.shift();
+                try {
+                    localStorage.setItem('tg_chat_history', JSON.stringify(chatHistory));
+                } catch(e) {
+                    console.warn("Storage penuh, tidak bisa menyimpan riwayat");
+                }
+            }
+        }
+
+        function renderMessage(text, type, time, senderName, imageUrl) {
+            const div = document.createElement('div');
+            const timeStr = time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+            
+            // Format HTML sederhana (ubah \n jadi <br>)
+            const formattedText = text ? text.replace(/\n/g, '<br>') : '';
+            const imageHtml = imageUrl ? `<img src="${imageUrl}" class="w-full max-w-[200px] rounded-lg mb-2 object-cover cursor-pointer hover:opacity-90" onclick="window.open('${imageUrl}','_blank')">` : '';
+
+            if (type === 'outgoing') {
+                div.className = 'flex justify-end msg-enter z-10 w-full';
+                div.innerHTML = `
+                    <div class="bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-800 dark:text-slate-100 max-w-[85%] rounded-2xl rounded-tr-sm px-4 py-2 shadow-sm border border-green-200/50 dark:border-transparent">
+                        ${imageHtml}
+                        ${formattedText ? `<div class="text-[15px] leading-relaxed break-words">${formattedText}</div>` : ''}
+                        <div class="text-[10px] text-green-700/60 dark:text-green-200/60 text-right mt-1 flex items-center justify-end gap-1">
+                            ${timeStr} <i data-lucide="check-check" class="w-3 h-3 text-blue-500 dark:text-blue-300"></i>
+                        </div>
+                    </div>
+                `;
+            } else {
+                div.className = 'flex justify-start msg-enter z-10 w-full';
+                div.innerHTML = `
+                    <div class="bg-white dark:bg-[#202c33] text-slate-800 dark:text-slate-100 max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-2 shadow-sm border border-slate-100 dark:border-transparent">
+                        <div class="text-[11px] font-bold text-blue-500 dark:text-emerald-400 mb-0.5">${senderName}</div>
+                        ${imageHtml}
+                        ${formattedText ? `<div class="text-[15px] leading-relaxed break-words">${formattedText}</div>` : ''}
+                        <div class="text-[10px] text-slate-400 text-right mt-1">${timeStr}</div>
+                    </div>
+                `;
+            }
+
+            chatContainer.appendChild(div);
+            lucide.createIcons();
+            scrollToBottom();
+        }
+
+        async function sendImage(event) {
+            const file = event.target.files[0];
+            if (!file || !botToken || !chatId) return;
+
+            // Reset input file
+            event.target.value = '';
+
+            // Tampilkan preview Optimistic UI
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                appendMessage(null, 'outgoing', new Date(), 'Anda', e.target.result, false);
+            }
+            reader.readAsDataURL(file);
+
+            const userName = localStorage.getItem('tg_username') || 'Guest';
+            const caption = `📷 Foto dari <b>${userName}</b>\n\n#ID_${sessionId}`;
+
+            // Kirim ke API Telegram
+            const formData = new FormData();
+            formData.append('chat_id', chatId);
+            formData.append('photo', file);
+            formData.append('caption', caption);
+            formData.append('parse_mode', 'HTML');
+
+            try {
+                const url = `https://api.telegram.org/bot${botToken}/sendPhoto`;
+                const response = await fetch(url, { method: 'POST', body: formData });
+                const data = await response.json();
+                if (!data.ok) throw new Error(data.description);
+                showToast("Gambar terkirim!");
+            } catch (error) {
+                console.error("Gagal mengirim gambar:", error);
+                showToast("Gagal mengirim gambar. Ukuran mungkin terlalu besar.");
+            }
+        }
+
+
+        // Logika Telegram API
+        function startConnection() {
+            messageInput.removeAttribute('disabled');
+            
+            // Bersihkan polling lama jika ada
+            if(pollInterval) clearInterval(pollInterval);
+            
+            chatContainer.innerHTML = `<div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: url('https://www.transparenttextures.com/patterns/cubes.png');"></div>`; // Clear chat
+            
+            loadHistory(); // Muat riwayat chat lokal dari memory
+
+            // Info terhubung dan panduan sesi
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'text-center my-4 z-10 flex flex-col gap-2 items-center';
+            infoDiv.innerHTML = `
+                <span class="bg-green-100 text-green-800 text-xs px-3 py-1 rounded-full shadow-sm">Terhubung ke Server</span>
+                <span class="bg-slate-200/50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 text-[10px] px-2 py-0.5 rounded border border-slate-300 dark:border-slate-600">Sesi ID: #${sessionId}</span>
+            `;
+            chatContainer.appendChild(infoDiv);
+            
+            // Mulai ambil pesan baru
+            fetchUpdates(); 
+            pollInterval = setInterval(fetchUpdates, 3000); // Cek setiap 3 detik
+        }
+
+        async function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text || !botToken || !chatId) return;
+
+            // Reset input
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            sendBtn.setAttribute('disabled', 'true');
+            messageInput.focus();
+
+            // Tampilkan di UI langsung (Optimistic UI)
+            appendMessage(text, 'outgoing');
+
+            const userName = localStorage.getItem('tg_username') || 'Guest';
+            // Gabungkan Nama, Teks, dan ID Sesi di akhir pesan
+            const finalMessage = `👤 <b>${userName}</b>\n${text}\n\n#ID_${sessionId}`;
+
+            // Kirim ke API Telegram
+            try {
+                const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: chatId,
+                        text: finalMessage,
+                        parse_mode: 'HTML'
+                    })
+                });
+                
+                const data = await response.json();
+                if (!data.ok) {
+                    throw new Error(data.description);
+                }
+            } catch (error) {
+                console.error("Gagal mengirim:", error);
+                showToast("Gagal mengirim pesan. Cek koneksi & pengaturan.");
+            }
+        }
+
+        async function fetchUpdates() {
+            if (!botToken) return;
+
+            try {
+                const url = `https://api.telegram.org/bot${botToken}/getUpdates?offset=${lastUpdateId + 1}&timeout=10`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.ok && data.result.length > 0) {
+                    let hasNewMessage = false;
+
+                    for (const update of data.result) {
+                        lastUpdateId = update.update_id;
+                        const msg = update.message || update.edited_message;
+                        
+                        if (msg) {
+                            const senderId = msg.chat.id.toString();
+                            if (senderId === chatId) {
+                                
+                                // Abaikan pesan dari Bot itu sendiri agar pesan web tidak memantul
+                                if (msg.from && msg.from.is_bot) continue;
+
+                                // --- SISTEM ROUTING SESI ---
+                                const repliedMsg = msg.reply_to_message;
+                                const repliedText = repliedMsg ? (repliedMsg.text || repliedMsg.caption || '') : '';
+                                
+                                // Jika ini adalah pesan "Reply/Balas" dari Admin
+                                if (repliedMsg) {
+                                    // Pastikan Admin sedang membalas pesan yang memiliki ID Sesi user ini
+                                    if (!repliedText.includes(sessionId)) {
+                                        continue; // Abaikan, ini balasan untuk pengunjung web lain
+                                    }
+                                } 
+                                // Jika admin mengirim pesan biasa (tanpa di-reply), maka dianggap pengumuman (Broadcast) ke semua pengunjung web.
+                                
+                                const senderName = msg.from ? msg.from.first_name : 'Admin CS';
+                                const msgTime = new Date(msg.date * 1000);
+                                hasNewMessage = true;
+
+                                // Jika pesan berisi gambar
+                                if (msg.photo) {
+                                    const photo = msg.photo[msg.photo.length - 1]; // Ambil resolusi tertinggi
+                                    try {
+                                        const fileRes = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${photo.file_id}`);
+                                        const fileData = await fileRes.json();
+                                        if (fileData.ok) {
+                                            const imgUrl = `https://api.telegram.org/file/bot${botToken}/${fileData.result.file_path}`;
+                                            appendMessage(msg.caption || '', 'incoming', msgTime, senderName, imgUrl);
+                                        }
+                                    } catch(e) {
+                                        console.error("Gagal memuat gambar", e);
+                                    }
+                                } 
+                                // Jika pesan teks biasa
+                                else if (msg.text) {
+                                    appendMessage(msg.text, 'incoming', msgTime, senderName);
+                                }
+                                // Fallback untuk tipe pesan lainnya (Stiker, Voice, Dokumen, dll)
+                                else {
+                                    let fallbackText = "Menerima lampiran (Format tidak didukung di web)";
+                                    if (msg.sticker) fallbackText = "Mengirim Stiker 🎯";
+                                    if (msg.voice) fallbackText = "Mengirim Pesan Suara 🎤";
+                                    if (msg.document) fallbackText = "Mengirim Dokumen 📄";
+                                    if (msg.video) fallbackText = "Mengirim Video 🎥";
+                                    
+                                    appendMessage(`<i>${fallbackText}</i>`, 'incoming', msgTime, senderName);
+                                }
+                            }
+                        }
+                    }
+
+                    if (hasNewMessage) {
+                        notifSound.play().catch(e => console.log("Auto-play terblokir", e));
+                    }
+                }
+            } catch (error) {
+                console.error("Gagal menarik pesan:", error);
+            }
+        }
+    </script>
+</body>
+</html>
