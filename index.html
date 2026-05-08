@@ -81,7 +81,7 @@
                 <i data-lucide="paperclip" class="w-5 h-5"></i>
             </label>
             <div class="flex-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl overflow-hidden shadow-sm flex items-center pr-1 focus-within:ring-2 ring-[var(--primary)]/50 transition-all">
-                <textarea id="message-input" rows="1" class="w-full py-2.5 px-4 outline-none resize-none bg-transparent max-h-32 text-slate-700 dark:text-slate-200" placeholder="Ketik pesan..." oninput="autoResize(this)" onkeydown="handleEnter(event)" disabled></textarea>
+                <textarea id="message-input" rows="1" class="w-full py-2.5 px-4 outline-none resize-none bg-transparent max-h-32 text-slate-700 dark:text-slate-200" placeholder="Ketik pesan..." oninput="autoResize(this, 'send-btn')" onkeydown="handleEnter(event, sendMessage, 'send-btn')" disabled></textarea>
             </div>
             <button id="send-btn" onclick="sendMessage()" class="p-3 bg-[var(--primary)] text-white rounded-full hover:bg-[var(--primary-hover)] transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed shrink-0" disabled>
                 <i data-lucide="send" class="w-5 h-5 ml-0.5"></i>
@@ -91,18 +91,18 @@
 
 
     <!-- ========================================== -->
-    <!-- CONTAINER ADMIN (DASBOR PENGATURAN)        -->
+    <!-- CONTAINER ADMIN (DASBOR PENGATURAN & INBOX)-->
     <!-- ========================================== -->
     <div id="admin-view" class="w-full max-w-md bg-slate-900 h-full sm:h-[600px] sm:rounded-2xl sm:shadow-2xl flex flex-col relative overflow-hidden hidden">
         
-        <header class="bg-slate-950 text-white p-4 flex justify-between items-center sm:rounded-t-2xl shadow-md z-10 border-b border-slate-800">
+        <header class="bg-slate-950 text-white p-4 flex justify-between items-center sm:rounded-t-2xl shadow-md z-10 border-b border-slate-800 shrink-0">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center">
-                    <i data-lucide="settings-2" class="w-6 h-6 text-emerald-400"></i>
+                    <i data-lucide="shield-check" class="w-6 h-6 text-emerald-400"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-lg leading-tight">Admin Dashboard</h1>
-                    <p class="text-xs text-slate-400">Pusat Konfigurasi</p>
+                    <h1 class="font-bold text-lg leading-tight">Admin Area</h1>
+                    <p class="text-[10px] text-slate-400">Pusat Kendali Web Chat</p>
                 </div>
             </div>
             <button onclick="window.location.href=window.location.pathname" class="p-2 hover:bg-white/10 text-slate-300 rounded-full transition-colors" title="Keluar Admin">
@@ -110,7 +110,14 @@
             </button>
         </header>
 
-        <main class="flex-1 overflow-y-auto p-4 flex flex-col gap-4 bg-slate-900 text-slate-200 chat-scroll">
+        <!-- TABS NAVIGASI ADMIN -->
+        <div class="flex border-b border-slate-800 bg-slate-950 shrink-0">
+            <button id="tab-btn-settings" onclick="switchAdminTab('settings')" class="flex-1 py-3 text-[11px] font-bold uppercase tracking-wider text-emerald-400 border-b-2 border-emerald-400 transition-colors">Pengaturan</button>
+            <button id="tab-btn-inbox" onclick="switchAdminTab('inbox')" class="flex-1 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 hover:text-slate-300 border-b-2 border-transparent transition-colors">Inbox Web</button>
+        </div>
+
+        <!-- TAB 1: PENGATURAN -->
+        <main id="admin-settings-tab" class="flex-1 overflow-y-auto p-4 flex flex-col gap-4 bg-slate-900 text-slate-200 chat-scroll">
             
             <!-- Card 1: Dashboard & Status -->
             <div class="bg-slate-800 rounded-xl p-4 border border-slate-700 shadow-lg">
@@ -197,10 +204,37 @@
                 </div>
             </div>
 
-            <button onclick="saveAdminSettings()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 rounded-xl font-bold transition-colors shadow-lg mt-2 mb-4 flex justify-center items-center gap-2">
+            <button onclick="saveAdminSettings()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 rounded-xl font-bold transition-colors shadow-lg mt-2 mb-4 flex justify-center items-center gap-2 shrink-0">
                 <i data-lucide="save" class="w-5 h-5"></i> Simpan Konfigurasi
             </button>
         </main>
+
+        <!-- TAB 2: INBOX CHAT (ADMIN MODE) -->
+        <div id="admin-inbox-tab" class="hidden flex-1 flex-col relative bg-slate-900 overflow-hidden">
+            <main id="admin-chat-container" class="flex-1 overflow-y-auto p-4 flex flex-col gap-3 chat-scroll">
+                <div class="text-center my-4 z-10"><span class="bg-slate-800 text-slate-400 text-[10px] px-3 py-1 rounded-full border border-slate-700">Tarik pesan dari server...</span></div>
+            </main>
+            
+            <!-- Indikator Sedang Membalas (Reply) -->
+            <div id="admin-reply-indicator" class="hidden bg-slate-800 border-t border-slate-700 p-2 px-4 justify-between items-center text-sm shrink-0">
+                <div class="flex flex-col">
+                    <span class="text-emerald-400 font-semibold text-[11px]" id="admin-reply-name">Membalas...</span>
+                    <span class="text-slate-300 text-[11px] truncate max-w-[250px]" id="admin-reply-text">Teks...</span>
+                </div>
+                <button onclick="cancelAdminReply()" class="text-slate-400 hover:text-rose-400 p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            
+            <!-- Input Area Admin -->
+            <footer class="bg-slate-950 p-3 flex items-end gap-2 border-t border-slate-800 shrink-0">
+                <div class="flex-1 bg-slate-800 border border-slate-700 rounded-xl overflow-hidden flex items-center pr-1 focus-within:ring-1 ring-emerald-500 transition-all">
+                    <textarea id="admin-msg-input" rows="1" class="w-full py-2.5 px-3 outline-none resize-none bg-transparent max-h-32 text-slate-200 text-sm" placeholder="Balas ke user (atau Broadcast)..." oninput="autoResize(this, 'admin-send-btn')" onkeydown="handleEnter(event, sendAdminMessage, 'admin-send-btn')"></textarea>
+                </div>
+                <button id="admin-send-btn" onclick="sendAdminMessage()" class="p-2.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                </button>
+            </footer>
+        </div>
+
     </div>
     
     <!-- Toast Notifikasi (Global) -->
@@ -256,8 +290,44 @@
         };
 
         // ==========================================
-        // LOGIKA MODE ADMIN
+        // UI HELPERS (DIGUNAKAN BERSAMA)
         // ==========================================
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            toast.style.opacity = '1';
+            toast.style.transform = 'translate(-50%, 10px)';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, 0)';
+            }, 3000);
+        }
+
+        function autoResize(textarea, btnId) {
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+            const btn = document.getElementById(btnId);
+            if(textarea.value.trim().length > 0 && !config.isOffline) btn.removeAttribute('disabled');
+            else btn.setAttribute('disabled', 'true');
+        }
+
+        function handleEnter(e, sendFunction, btnId) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const btn = document.getElementById(btnId);
+                if(!btn.hasAttribute('disabled')) sendFunction();
+            }
+        }
+
+        // ==========================================
+        // LOGIKA MODE ADMIN (PENGATURAN & INBOX)
+        // ==========================================
+        let adminPollInterval = null;
+        let adminLastUpdateId = 0;
+        let adminReplyToMessageId = null;
+        let adminReplyToSessionId = null;
+        const processedAdminMsgIds = new Set(); // Cegah duplikat Optimistic UI
+
         function initAdminPanel() {
             const pwd = prompt("Masukkan password admin:");
             if (pwd !== config.adminPwd) {
@@ -278,6 +348,202 @@
             document.getElementById('cfg-offline').checked = config.isOffline;
         }
 
+        function switchAdminTab(tabName) {
+            const btnSettings = document.getElementById('tab-btn-settings');
+            const btnInbox = document.getElementById('tab-btn-inbox');
+            const tabSettings = document.getElementById('admin-settings-tab');
+            const tabInbox = document.getElementById('admin-inbox-tab');
+
+            if (tabName === 'settings') {
+                btnSettings.className = "flex-1 py-3 text-[11px] font-bold uppercase tracking-wider text-emerald-400 border-b-2 border-emerald-400 transition-colors";
+                btnInbox.className = "flex-1 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors border-b-2 border-transparent";
+                tabSettings.classList.remove('hidden'); tabSettings.classList.add('flex');
+                tabInbox.classList.add('hidden'); tabInbox.classList.remove('flex');
+
+                if (adminPollInterval) clearInterval(adminPollInterval);
+            } else {
+                btnInbox.className = "flex-1 py-3 text-[11px] font-bold uppercase tracking-wider text-emerald-400 border-b-2 border-emerald-400 transition-colors";
+                btnSettings.className = "flex-1 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors border-b-2 border-transparent";
+                tabInbox.classList.remove('hidden'); tabInbox.classList.add('flex');
+                tabSettings.classList.add('hidden'); tabSettings.classList.remove('flex');
+
+                // Peringatan agar tidak dibuka di 2 tab (admin vs user) bersamaan karena sistem Polling bisa bentrok
+                showToast("⚠️ Catatan: Buka menu ini saat tab User (Pengunjung) sedang ditutup di browser Anda.");
+                startAdminConnection();
+            }
+        }
+
+        function startAdminConnection() {
+            if (!config.botToken || !config.chatId) return showToast("Atur Token & Chat ID dulu di Pengaturan!");
+            document.getElementById('admin-chat-container').innerHTML = `<div class="text-center my-4 z-10"><span class="bg-slate-800 text-slate-400 text-[10px] px-3 py-1 rounded-full border border-slate-700">Polling pesan dimulai...</span></div>`;
+            if(adminPollInterval) clearInterval(adminPollInterval);
+            fetchAdminUpdates();
+            adminPollInterval = setInterval(fetchAdminUpdates, 3000);
+        }
+
+        async function fetchAdminUpdates() {
+            if (!config.botToken) return;
+            try {
+                const res = await fetch(`https://api.telegram.org/bot${config.botToken}/getUpdates?offset=${adminLastUpdateId + 1}&timeout=10`);
+                const data = await res.json();
+                if (data.ok && data.result.length > 0) {
+                    let hasNewAdminMessage = false;
+                    for (const update of data.result) {
+                        adminLastUpdateId = update.update_id;
+                        const msg = update.message || update.edited_message;
+                        if (msg) {
+                            const senderId = msg.chat.id.toString();
+                            const cleanId = config.chatId.replace('-', '');
+                            if (senderId === config.chatId || senderId === `-100${cleanId}`) {
+                                if(processAdminMessage(msg)) hasNewAdminMessage = true;
+                            }
+                        }
+                    }
+                    if (hasNewAdminMessage && config.soundOn) {
+                        notifSound.play().catch(e => {});
+                    }
+                }
+            } catch (error) {}
+        }
+
+        function processAdminMessage(msg) {
+            if (processedAdminMsgIds.has(msg.message_id)) return false;
+            processedAdminMsgIds.add(msg.message_id);
+
+            const text = msg.text || msg.caption || '';
+            const msgId = msg.message_id;
+            const isBot = msg.from && msg.from.is_bot;
+            const msgTime = new Date(msg.date * 1000);
+
+            let type = 'incoming';
+            let senderName = msg.from.first_name;
+            let extSessionId = '';
+            let displayText = text;
+
+            // Jika ada foto, sisipkan teks indikator
+            if (msg.photo) displayText = "📸 [Gambar Terlampir]\n" + displayText;
+            else if (!msg.text && !msg.photo) displayText = "📎 [Menerima Lampiran Lain]";
+
+            if (isBot) {
+                // Analisa pesan: Jika mengandung #ID_, berarti pesan ini "dioper" oleh Bot dari pengunjung (User)
+                if (text.includes('#ID_')) {
+                    type = 'incoming';
+                    const match = text.match(/#ID_([A-Z0-9]+)/);
+                    if (match) extSessionId = match[1];
+
+                    const nameMatch = text.match(/👤 <b>(.*?)<\/b>/);
+                    if (nameMatch) senderName = nameMatch[1];
+
+                    // Bersihkan tag metadata agar chat terlihat bersih di admin
+                    displayText = text.replace(/👤 <b>.*?<\/b>\n/, '').replace(`\n\n#ID_${extSessionId}`, '');
+                } else {
+                    // Pesan broadcast dikirim Admin via Bot
+                    type = 'outgoing';
+                    senderName = 'Sistem Bot (Anda)';
+                }
+            } else {
+                // Admin membalas dari aplikasi Native Telegram
+                type = 'outgoing';
+                senderName = msg.from.first_name;
+            }
+
+            appendAdminMessageUI(msgId, displayText, type, msgTime, senderName, extSessionId);
+            return true;
+        }
+
+        function appendAdminMessageUI(msgId, text, type, time, senderName, extSessionId) {
+            const container = document.getElementById('admin-chat-container');
+            const div = document.createElement('div');
+            const timeStr = time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+            const formattedText = text ? text.replace(/\n/g, '<br>') : '';
+            
+            // Sanitasi parameter untuk function onClick
+            const safeText = text.replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/\n/g, " ").substring(0, 50);
+
+            if (type === 'incoming') {
+                div.className = 'flex justify-start msg-enter z-10 w-full';
+                div.innerHTML = `
+                    <div class="bg-slate-800 text-slate-200 max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-2 shadow-sm border border-slate-700 relative group">
+                        <div class="flex justify-between items-center mb-0.5 gap-4">
+                            <div class="text-[11px] font-bold text-emerald-400">${senderName} ${extSessionId ? `<span class="text-slate-500 font-normal">#${extSessionId}</span>` : ''}</div>
+                            ${extSessionId ? `<button onclick="setAdminReply(${msgId}, '${extSessionId}', '${senderName}', '${safeText}')" class="text-[9px] bg-slate-700 hover:bg-emerald-600 px-2 py-0.5 rounded text-white transition-colors opacity-0 group-hover:opacity-100 absolute -right-2 -top-2 shadow-md cursor-pointer pointer-events-auto">Balas</button>` : ''}
+                        </div>
+                        <div class="text-[13px] leading-relaxed break-words">${formattedText}</div>
+                        <div class="text-[9px] text-slate-500 text-right mt-1">${timeStr}</div>
+                    </div>
+                `;
+            } else {
+                div.className = 'flex justify-end msg-enter z-10 w-full';
+                div.innerHTML = `
+                    <div class="bg-emerald-900/40 text-slate-200 max-w-[85%] rounded-2xl rounded-tr-sm px-4 py-2 shadow-sm border border-emerald-800/50">
+                        <div class="text-[10px] font-bold text-emerald-500 mb-0.5 text-right">${senderName}</div>
+                        <div class="text-[13px] leading-relaxed break-words">${formattedText}</div>
+                        <div class="text-[9px] text-emerald-700/60 text-right mt-1">${timeStr}</div>
+                    </div>
+                `;
+            }
+
+            container.appendChild(div);
+            lucide.createIcons();
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }
+
+        function setAdminReply(msgId, extSessionId, senderName, text) {
+            adminReplyToMessageId = msgId;
+            adminReplyToSessionId = extSessionId;
+            document.getElementById('admin-reply-indicator').classList.remove('hidden');
+            document.getElementById('admin-reply-indicator').classList.add('flex');
+            document.getElementById('admin-reply-name').textContent = `Membalas User: ${senderName}`;
+            document.getElementById('admin-reply-text').textContent = text + "...";
+            document.getElementById('admin-msg-input').focus();
+        }
+
+        function cancelAdminReply() {
+            adminReplyToMessageId = null;
+            adminReplyToSessionId = null;
+            document.getElementById('admin-reply-indicator').classList.add('hidden');
+            document.getElementById('admin-reply-indicator').classList.remove('flex');
+        }
+
+        async function sendAdminMessage() {
+            const input = document.getElementById('admin-msg-input');
+            const btn = document.getElementById('admin-send-btn');
+            const text = input.value.trim();
+            if (!text || !config.botToken || !config.chatId) return;
+
+            input.value = ''; input.style.height = 'auto'; btn.setAttribute('disabled', 'true');
+
+            const payload = {
+                chat_id: config.chatId,
+                text: text,
+                parse_mode: 'HTML'
+            };
+
+            // Jika mode balas (Reply specific user message)
+            if (adminReplyToMessageId) {
+                payload.reply_to_message_id = adminReplyToMessageId;
+                appendAdminMessageUI(Date.now(), `[Membalas #${adminReplyToSessionId}]\n${text}`, 'outgoing', new Date(), 'Anda (Web)', '');
+            } else {
+                // Mode Broadcast
+                appendAdminMessageUI(Date.now(), `[Broadcast Umum]\n${text}`, 'outgoing', new Date(), 'Anda (Web)', '');
+            }
+
+            try {
+                await fetch(`https://api.telegram.org/bot${config.botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                cancelAdminReply();
+            } catch (e) {
+                showToast('Gagal mengirim balasan.');
+            }
+        }
+
+
+        // ==========================================
+        // FUNGSI PENGATURAN ADMIN (SETTINGS)
+        // ==========================================
         async function testBotConnection() {
             const btn = document.getElementById('btn-test-bot');
             const token = document.getElementById('cfg-token').value.trim();
@@ -331,7 +597,7 @@
 
 
         // ==========================================
-        // LOGIKA MODE USER (CHAT)
+        // LOGIKA MODE USER (CHAT PENGUNJUNG)
         // ==========================================
         const chatContainer = document.getElementById('chat-container');
         const messageInput = document.getElementById('message-input');
@@ -381,31 +647,6 @@
             const userName = localStorage.getItem('tg_username');
             statusText.innerHTML = `Online • <b>${userName}</b> <i data-lucide="edit-3" class="w-3 h-3 inline"></i>`;
             lucide.createIcons();
-        }
-
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-msg').textContent = msg;
-            toast.style.opacity = '1';
-            toast.style.transform = 'translate(-50%, 10px)';
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translate(-50%, 0)';
-            }, 3000);
-        }
-
-        function autoResize(textarea) {
-            textarea.style.height = 'auto';
-            textarea.style.height = (textarea.scrollHeight) + 'px';
-            if(textarea.value.trim().length > 0 && !config.isOffline) sendBtn.removeAttribute('disabled');
-            else sendBtn.setAttribute('disabled', 'true');
-        }
-
-        function handleEnter(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                if(messageInput.value.trim().length > 0 && !config.isOffline) sendMessage();
-            }
         }
 
         function scrollToBottom() {
@@ -460,10 +701,6 @@
             });
         }
 
-
-        // ==========================================
-        // KOMUNIKASI API TELEGRAM
-        // ==========================================
         function startConnection() {
             chatContainer.innerHTML = `<div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: url('https://www.transparenttextures.com/patterns/cubes.png');"></div>`;
             
@@ -475,13 +712,12 @@
                 messageInput.placeholder = "Maaf, saat ini CS sedang offline.";
                 document.getElementById('attachment-btn').classList.add('hidden');
                 
-                // Info terhubung
                 const infoDiv = document.createElement('div');
                 infoDiv.className = 'text-center my-4 z-10 flex flex-col gap-2 items-center';
                 infoDiv.innerHTML = `<span class="bg-rose-100 text-rose-800 text-xs px-3 py-1 rounded-full shadow-sm">Toko sedang tutup</span>`;
                 chatContainer.appendChild(infoDiv);
                 loadHistory();
-                return; // Berhenti disini, tidak perlu polling pesan
+                return; 
             }
 
             // Mode Online
@@ -499,7 +735,6 @@
             
             loadHistory();
 
-            // Tampilkan Pesan Sambutan Otomatis jika chat masih kosong
             if(chatHistory.length === 0 && config.welcomeMsg) {
                 setTimeout(() => {
                     appendMessage(config.welcomeMsg, 'incoming', new Date(), config.headerName, null, false);
@@ -531,8 +766,6 @@
                 const res = await fetch(`https://api.telegram.org/bot${config.botToken}/sendPhoto`, { method: 'POST', body: formData });
                 const data = await res.json();
                 if (!data.ok) throw new Error();
-                
-                config.msgCount++; localStorage.setItem('tg_app_config', JSON.stringify(config));
             } catch (error) {
                 showToast("Gagal mengirim gambar. Ukuran mungkin terlalu besar.");
             }
@@ -557,8 +790,6 @@
                 });
                 const data = await res.json();
                 if (!data.ok) throw new Error();
-                
-                config.msgCount++; localStorage.setItem('tg_app_config', JSON.stringify(config));
             } catch (error) {
                 showToast("Gagal mengirim pesan.");
             }
